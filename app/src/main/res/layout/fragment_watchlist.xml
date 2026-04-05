@@ -8,10 +8,10 @@
     android:paddingTop="20dp">
 
     <TextView
-        android:id="@+id/tvFavoritesTitle"
+        android:id="@+id/tvWatchlistTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/my_favorites"
+        android:text="@string/my_watchlist"
         android:textColor="@color/text_primary"
         android:textSize="24sp"
         android:textStyle="bold" />
@@ -20,12 +20,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="@string/favorites_subtitle"
+        android:text="@string/watchlist_subtitle"
         android:textColor="@color/text_secondary"
         android:textSize="14sp" />
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerFavorites"
+        android:id="@+id/recyclerWatchlist"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
@@ -45,13 +45,13 @@
         <ImageView
             android:layout_width="72dp"
             android:layout_height="72dp"
-            android:src="@drawable/ic_heart_outline" />
+            android:src="@drawable/ic_watchlist" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="@string/no_favorites_yet"
+            android:text="@string/no_watchlist_yet"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -61,7 +61,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="@string/favorites_empty_message"
+            android:text="@string/watchlist_empty_message"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
     </LinearLayout>

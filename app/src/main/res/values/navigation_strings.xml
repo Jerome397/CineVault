@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_explore">Explore</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_watchlist">Watchlist</string>
+    <string name="nav_favorites">Favorites</string>
+
+    <string name="my_watchlist">My Watchlist</string>
+    <string name="my_watchlist_count">My Watchlist (%1$d)</string>
+    <string name="watchlist_subtitle">Movies you saved to watch later.</string>
+    <string name="no_watchlist_yet">No watchlist yet</string>
+    <string name="watchlist_empty_message">Add movies you want to watch later and they will appear here.</string>
+</resources>

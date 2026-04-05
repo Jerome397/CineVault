@@ -1,3 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">CineVault</string>
+    <string name="featured_tonight">Featured Tonight</string>
+    <string name="demo_featured_title">The Matrix</string>
+    <string name="view_details">View Details</string>
+    <string name="add_to_favorites">Add Favorite</string>
+    <string name="added_to_favorites">Added ✓</string>
+    <string name="popular_now">Popular Now</string>
+    <string name="top_rated">Top Rated</string>
+    <string name="discover_movies">Discover Movies</string>
+    <string name="search_empty_hint">Search by title, genre, or actor. You can also attach your microphone logic to the voice button.</string>
+    <string name="search_no_results">No results found. Try another title or genre.</string>
+    <string name="search_hint">Search movies…</string>
+    <string name="voice_search">Voice search</string>
+    <string name="recent_searches">Recent searches</string>
+    <string name="start_searching">Start searching</string>
+    <string name="my_favorites">My Favorites</string>
+    <string name="my_favorites_count">My Favorites (%1$d)</string>
+    <string name="favorites_subtitle">The movies you saved for quick access and offline browsing.</string>
+    <string name="no_favorites_yet">No favorites yet</string>
+    <string name="favorites_empty_message">Start adding movies you love and they will appear here.</string>
+    <string name="storyline">Storyline</string>
+    <string name="cast">Cast</string>
+    <string name="plot_not_available">Plot not available.</string>
+    <string name="cast_not_available">Cast information not available.</string>
+    <string name="favorite">Favorite</string>
+    <string name="close">Close</string>
 </resources>
