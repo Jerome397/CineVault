@@ -1,0 +1,11 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.gradle": true,
+    "**/.idea": true,
+    "**/build": true,
+    "**/node_modules": true
+  },
+  "editor.formatOnSave": true,
+  "terminal.integrated.defaultProfile.windows": "PowerShell"
+}
