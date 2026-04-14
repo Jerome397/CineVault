@@ -29,10 +29,17 @@ class WatchlistFragment : Fragment(R.layout.fragment_watchlist) {
             recyclerWatchlist.addItemDecoration(SpacingItemDecoration(16))
         }
 
-        bindWatchlist(DemoMovies.watchlist)
+        refreshWatchlist()
     }
 
-    private fun bindWatchlist(watchlist: List<MovieUIModel>) {
+    override fun onResume() {
+        super.onResume()
+        refreshWatchlist()
+    }
+
+    private fun refreshWatchlist() {
+        val watchlist = MovieStore.getWatchlist()
+
         titleText.text = getString(R.string.my_watchlist_count, watchlist.size)
 
         if (watchlist.isEmpty()) {

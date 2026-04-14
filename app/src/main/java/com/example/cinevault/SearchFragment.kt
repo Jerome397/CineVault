@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognizerIntent
 import android.text.Editable
 import android.text.TextWatcher
@@ -33,6 +35,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private val resultAdapter = MovieRowAdapter(::showMovieDetails)
     private val recentSearches = listOf("Interstellar", "Batman", "Sci-Fi", "Action")
 
+    private val searchHandler = Handler(Looper.getMainLooper())
+    private var pendingSearch: Runnable? = null
+
     private val speechLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
@@ -42,7 +47,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 if (spokenText.isNotBlank()) {
                     searchInput.setText(spokenText)
                     searchInput.setSelection(spokenText.length)
-                    filterMovies(spokenText)
+                    performSearch(spokenText)
                 }
             }
         }
@@ -76,7 +81,11 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             override fun afterTextChanged(s: Editable?) = Unit
 
             override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) {
-                filterMovies(text?.toString().orEmpty())
+                pendingSearch?.let { searchHandler.removeCallbacks(it) }
+
+                val query = text?.toString().orEmpty()
+                pendingSearch = Runnable { performSearch(query) }
+                searchHandler.postDelayed(pendingSearch!!, 350)
             }
         })
     }
@@ -108,10 +117,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         resultAdapter.submitList(emptyList())
         recyclerResults.visibility = View.GONE
         emptyState.visibility = View.VISIBLE
-        helperText.text = getString(R.string.search_empty_hint)
+        helperText.text = "Search movies by title."
     }
 
-    private fun filterMovies(query: String) {
+    private fun performSearch(query: String) {
         val normalized = query.trim()
 
         if (normalized.isEmpty()) {
@@ -119,22 +128,46 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             return
         }
 
-        val results = DemoMovies.all.filter { movie ->
-            movie.title.contains(normalized, ignoreCase = true) ||
-                    movie.genre.contains(normalized, ignoreCase = true) ||
-                    movie.actors.contains(normalized, ignoreCase = true)
-        }
+        helperText.text = "Searching..."
+        recyclerResults.visibility = View.GONE
+        emptyState.visibility = View.VISIBLE
 
-        if (results.isEmpty()) {
-            resultAdapter.submitList(emptyList())
-            recyclerResults.visibility = View.GONE
-            emptyState.visibility = View.VISIBLE
-            helperText.text = getString(R.string.search_no_results)
-        } else {
-            emptyState.visibility = View.GONE
-            recyclerResults.visibility = View.VISIBLE
-            resultAdapter.submitList(results)
-        }
+        Thread {
+            try {
+                val results = BackendApi.searchMovies(normalized)
+                MovieStore.upsertMovies(results)
+
+                activity?.runOnUiThread {
+                    if (!isAdded) return@runOnUiThread
+
+                    if (results.isEmpty()) {
+                        resultAdapter.submitList(emptyList())
+                        recyclerResults.visibility = View.GONE
+                        emptyState.visibility = View.VISIBLE
+                        helperText.text = "No results found for \"$normalized\"."
+                    } else {
+                        emptyState.visibility = View.GONE
+                        recyclerResults.visibility = View.VISIBLE
+                        helperText.text = "Results for \"$normalized\""
+                        resultAdapter.submitList(results)
+                    }
+                }
+            } catch (e: Exception) {
+                activity?.runOnUiThread {
+                    if (!isAdded) return@runOnUiThread
+
+                    resultAdapter.submitList(emptyList())
+                    recyclerResults.visibility = View.GONE
+                    emptyState.visibility = View.VISIBLE
+                    helperText.text = "Could not load movies."
+                    Toast.makeText(
+                        requireContext(),
+                        e.message ?: "Search failed",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }.start()
     }
 
     private fun renderRecentSearches() {
@@ -150,7 +183,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 setOnClickListener {
                     searchInput.setText(label)
                     searchInput.setSelection(label.length)
-                    filterMovies(label)
+                    performSearch(label)
                 }
             }
 
@@ -159,7 +192,13 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     private fun showMovieDetails(movie: MovieUIModel) {
+        MovieStore.upsertMovie(movie)
         MovieDetailsBottomSheetFragment.newInstance(movie)
             .show(parentFragmentManager, MovieDetailsBottomSheetFragment.TAG)
+    }
+
+    override fun onDestroyView() {
+        pendingSearch?.let { searchHandler.removeCallbacks(it) }
+        super.onDestroyView()
     }
 }

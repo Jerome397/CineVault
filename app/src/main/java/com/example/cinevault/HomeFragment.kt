@@ -1,9 +1,7 @@
 package com.example.cinevault
 
-import android.animation.ObjectAnimator
 import android.os.Bundle
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -14,8 +12,6 @@ import coil.load
 import com.google.android.material.button.MaterialButton
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
-
-    private var skeletonAnimator: ObjectAnimator? = null
 
     private lateinit var featuredImage: ImageView
     private lateinit var featuredTitle: TextView
@@ -31,7 +27,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private val popularAdapter = MoviePosterAdapter(::showMovieDetails)
     private val topRatedAdapter = MoviePosterAdapter(::showMovieDetails)
 
-    private lateinit var currentFeaturedMovie: MovieUIModel
+    private var currentFeaturedMovie: MovieUIModel? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -49,26 +45,24 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
         setupRecycler(recyclerPopular, popularAdapter)
         setupRecycler(recyclerTopRated, topRatedAdapter)
-        startLoadingState()
 
-        val shuffledMovies = DemoMovies.all.shuffled()
-        currentFeaturedMovie = shuffledMovies.first()
-        val exploreMovies = shuffledMovies.drop(1)
-        val topMovies = DemoMovies.topRated.shuffled()
-
-        buttonDetails.setOnClickListener { showMovieDetails(currentFeaturedMovie) }
-
-        buttonFavorite.setOnClickListener {
-            pulseView(buttonFavorite)
-            buttonFavorite.text = getString(R.string.added_to_favorites)
+        buttonDetails.setOnClickListener {
+            currentFeaturedMovie?.let(::showMovieDetails)
         }
 
-        view.postDelayed({
-            bindFeaturedMovie(currentFeaturedMovie)
-            popularAdapter.submitList(exploreMovies)
-            topRatedAdapter.submitList(topMovies)
-            endLoadingState()
-        }, 850)
+        buttonFavorite.setOnClickListener {
+            currentFeaturedMovie?.let { movie ->
+                MovieStore.toggleFavorite(movie.id)
+                updateFavoriteButton()
+            }
+        }
+
+        renderFromStore()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        renderFromStore()
     }
 
     private fun setupRecycler(recyclerView: RecyclerView, adapter: RecyclerView.Adapter<*>) {
@@ -81,66 +75,66 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
     }
 
-    private fun bindFeaturedMovie(movie: MovieUIModel) {
-        featuredImage.load(movie.posterUrl) {
+    private fun renderFromStore() {
+        val movies = MovieStore.getAll().shuffled()
+
+        skeletonContainer.visibility = View.GONE
+        contentContainer.visibility = View.VISIBLE
+
+        if (movies.isEmpty()) {
+            currentFeaturedMovie = null
+
+            featuredImage.setImageResource(R.drawable.poster_placeholder)
+            featuredTitle.text = "No movies yet"
+            featuredMeta.text = "Use Search to load movies"
+            featuredPlot.text = "Once you search for a movie, it will appear here."
+            buttonDetails.isEnabled = false
+            buttonFavorite.isEnabled = false
+            buttonFavorite.text = getString(R.string.add_to_favorites)
+
+            popularAdapter.submitList(emptyList())
+            topRatedAdapter.submitList(emptyList())
+            return
+        }
+
+        val featured = movies.first()
+        val remaining = movies.drop(1)
+        val firstRow = remaining.take(10)
+        val secondRow = remaining.drop(10).take(10)
+
+        currentFeaturedMovie = featured
+
+        featuredImage.load(featured.posterUrl) {
             crossfade(true)
             placeholder(R.drawable.poster_placeholder)
             error(R.drawable.poster_placeholder)
         }
 
-        featuredTitle.text = movie.title
-        featuredMeta.text = listOf(movie.year, movie.genre, "⭐ ${movie.rating}")
+        featuredTitle.text = featured.title
+        featuredMeta.text = listOf(featured.year, featured.genre, "⭐ ${featured.rating.ifBlank { "N/A" }}")
             .filter { it.isNotBlank() }
             .joinToString(" • ")
-        featuredPlot.text = movie.plot
+        featuredPlot.text = featured.plot.ifBlank { "Open the movie to load full details." }
+
+        buttonDetails.isEnabled = true
+        buttonFavorite.isEnabled = true
+        updateFavoriteButton()
+
+        popularAdapter.submitList(firstRow)
+        topRatedAdapter.submitList(secondRow)
     }
 
-    private fun startLoadingState() {
-        contentContainer.visibility = View.INVISIBLE
-        skeletonContainer.visibility = View.VISIBLE
-
-        skeletonAnimator?.cancel()
-        skeletonAnimator = ObjectAnimator.ofFloat(skeletonContainer, View.ALPHA, 0.45f, 1f).apply {
-            duration = 900
-            repeatCount = ObjectAnimator.INFINITE
-            repeatMode = ObjectAnimator.REVERSE
-            interpolator = AccelerateDecelerateInterpolator()
-            start()
+    private fun updateFavoriteButton() {
+        val movie = currentFeaturedMovie ?: return
+        buttonFavorite.text = if (MovieStore.isFavorite(movie.id)) {
+            getString(R.string.added_to_favorites)
+        } else {
+            getString(R.string.add_to_favorites)
         }
-    }
-
-    private fun endLoadingState() {
-        skeletonAnimator?.cancel()
-        skeletonAnimator = null
-        skeletonContainer.visibility = View.GONE
-        contentContainer.alpha = 0f
-        contentContainer.visibility = View.VISIBLE
-        contentContainer.animate().alpha(1f).setDuration(250).start()
     }
 
     private fun showMovieDetails(movie: MovieUIModel) {
         MovieDetailsBottomSheetFragment.newInstance(movie)
             .show(parentFragmentManager, MovieDetailsBottomSheetFragment.TAG)
-    }
-
-    private fun pulseView(view: View) {
-        view.animate()
-            .scaleX(1.08f)
-            .scaleY(1.08f)
-            .setDuration(100)
-            .withEndAction {
-                view.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(100)
-                    .start()
-            }
-            .start()
-    }
-
-    override fun onDestroyView() {
-        skeletonAnimator?.cancel()
-        skeletonAnimator = null
-        super.onDestroyView()
     }
 }

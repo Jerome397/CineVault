@@ -29,10 +29,17 @@ class FavoritesFragment : Fragment(R.layout.fragment_favorites) {
             recyclerFavorites.addItemDecoration(SpacingItemDecoration(16))
         }
 
-        bindFavorites(DemoMovies.favorites)
+        refreshFavorites()
     }
 
-    private fun bindFavorites(favorites: List<MovieUIModel>) {
+    override fun onResume() {
+        super.onResume()
+        refreshFavorites()
+    }
+
+    private fun refreshFavorites() {
+        val favorites = MovieStore.getFavorites()
+
         titleText.text = getString(R.string.my_favorites_count, favorites.size)
 
         if (favorites.isEmpty()) {
