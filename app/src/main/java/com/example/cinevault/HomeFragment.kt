@@ -27,7 +27,9 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private val popularAdapter = MoviePosterAdapter(::showMovieDetails)
     private val topRatedAdapter = MoviePosterAdapter(::showMovieDetails)
 
-    private var currentFeaturedMovie: MovieUIModel? = null
+    private var featuredMovie: MovieUIModel? = null
+    private var popularMovies: List<MovieUIModel> = emptyList()
+    private var topRatedMovies: List<MovieUIModel> = emptyList()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -47,22 +49,22 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         setupRecycler(recyclerTopRated, topRatedAdapter)
 
         buttonDetails.setOnClickListener {
-            currentFeaturedMovie?.let(::showMovieDetails)
+            featuredMovie?.let(::showMovieDetails)
         }
 
         buttonFavorite.setOnClickListener {
-            currentFeaturedMovie?.let { movie ->
+            featuredMovie?.let { movie ->
                 MovieStore.toggleFavorite(movie.id)
                 updateFavoriteButton()
             }
         }
 
-        renderFromStore()
+        loadHomeData()
     }
 
     override fun onResume() {
         super.onResume()
-        renderFromStore()
+        updateFavoriteButton()
     }
 
     private fun setupRecycler(recyclerView: RecyclerView, adapter: RecyclerView.Adapter<*>) {
@@ -75,34 +77,54 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
     }
 
-    private fun renderFromStore() {
-        val movies = MovieStore.getAll().shuffled()
+    private fun loadHomeData() {
+        skeletonContainer.visibility = View.VISIBLE
+        contentContainer.visibility = View.INVISIBLE
+
+        Thread {
+            try {
+                val popular = BackendApi.getPopularMovies()
+                val topRated = BackendApi.getTopRatedMovies()
+
+                MovieStore.upsertMovies(popular)
+                MovieStore.upsertMovies(topRated)
+
+                activity?.runOnUiThread {
+                    if (!isAdded) return@runOnUiThread
+                    bindHomeData(popular, topRated)
+                }
+            } catch (_: Exception) {
+                activity?.runOnUiThread {
+                    if (!isAdded) return@runOnUiThread
+                    bindHomeData(emptyList(), emptyList())
+                }
+            }
+        }.start()
+    }
+
+    private fun bindHomeData(popular: List<MovieUIModel>, topRated: List<MovieUIModel>) {
+        popularMovies = popular
+        topRatedMovies = topRated
+        featuredMovie = popular.firstOrNull()
 
         skeletonContainer.visibility = View.GONE
         contentContainer.visibility = View.VISIBLE
 
-        if (movies.isEmpty()) {
-            currentFeaturedMovie = null
+        val featured = featuredMovie
 
+        if (featured == null) {
             featuredImage.setImageResource(R.drawable.poster_placeholder)
-            featuredTitle.text = "No movies yet"
-            featuredMeta.text = "Use Search to load movies"
-            featuredPlot.text = "Once you search for a movie, it will appear here."
+            featuredTitle.text = "No movies available"
+            featuredMeta.text = "Popular movies will appear here"
+            featuredPlot.text = ""
             buttonDetails.isEnabled = false
             buttonFavorite.isEnabled = false
             buttonFavorite.text = getString(R.string.add_to_favorites)
 
             popularAdapter.submitList(emptyList())
-            topRatedAdapter.submitList(emptyList())
+            topRatedAdapter.submitList(topRatedMovies)
             return
         }
-
-        val featured = movies.first()
-        val remaining = movies.drop(1)
-        val firstRow = remaining.take(10)
-        val secondRow = remaining.drop(10).take(10)
-
-        currentFeaturedMovie = featured
 
         featuredImage.load(featured.posterUrl) {
             crossfade(true)
@@ -111,21 +133,28 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
 
         featuredTitle.text = featured.title
-        featuredMeta.text = listOf(featured.year, featured.genre, "⭐ ${featured.rating.ifBlank { "N/A" }}")
+        featuredMeta.text = listOf(featured.year, featured.genre)
             .filter { it.isNotBlank() }
             .joinToString(" • ")
-        featuredPlot.text = featured.plot.ifBlank { "Open the movie to load full details." }
+        featuredPlot.text = ""
 
         buttonDetails.isEnabled = true
         buttonFavorite.isEnabled = true
         updateFavoriteButton()
 
-        popularAdapter.submitList(firstRow)
-        topRatedAdapter.submitList(secondRow)
+        popularAdapter.submitList(popularMovies.drop(1))
+        topRatedAdapter.submitList(topRatedMovies)
     }
 
     private fun updateFavoriteButton() {
-        val movie = currentFeaturedMovie ?: return
+        val movie = featuredMovie
+        if (movie == null) {
+            buttonFavorite.isEnabled = false
+            buttonFavorite.text = getString(R.string.add_to_favorites)
+            return
+        }
+
+        buttonFavorite.isEnabled = true
         buttonFavorite.text = if (MovieStore.isFavorite(movie.id)) {
             getString(R.string.added_to_favorites)
         } else {
@@ -134,6 +163,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun showMovieDetails(movie: MovieUIModel) {
+        MovieStore.upsertMovie(movie)
         MovieDetailsBottomSheetFragment.newInstance(movie)
             .show(parentFragmentManager, MovieDetailsBottomSheetFragment.TAG)
     }

@@ -2,7 +2,7 @@ package com.example.cinevault
 
 object Constants {
     // Emulator:
-    const val BASE_URL = "http://10.81.20.111:3000/"
+    const val BASE_URL = "http://192.168.1.8:3000/"
 
     // If you test on a real phone with:
     // adb reverse tcp:3000 tcp:3000

@@ -11,7 +11,43 @@ object BackendApi {
     fun searchMovies(query: String): List<MovieUIModel> {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val json = getJson("${Constants.BASE_URL}movies/search?query=$encodedQuery")
+        return parseMovieList(json)
+    }
 
+    fun getPopularMovies(): List<MovieUIModel> {
+        val json = getJson("${Constants.BASE_URL}movies/popular")
+        return parseMovieList(json)
+    }
+
+    fun getTopRatedMovies(): List<MovieUIModel> {
+        val json = getJson("${Constants.BASE_URL}movies/top-rated")
+        return parseMovieList(json)
+    }
+
+    fun getMovieDetails(imdbId: String): MovieUIModel {
+        val json = getJson("${Constants.BASE_URL}movies/$imdbId")
+
+        if (json.optString("Response") == "False") {
+            throw IOException(json.optString("Error", "Movie not found"))
+        }
+
+        val id = clean(json.optString("imdbID"))
+
+        return MovieUIModel(
+            id = id,
+            title = clean(json.optString("Title")),
+            year = clean(json.optString("Year")),
+            posterUrl = cleanPoster(json.optString("Poster")),
+            genre = clean(json.optString("Genre")),
+            plot = clean(json.optString("Plot")),
+            rating = clean(json.optString("imdbRating")),
+            actors = clean(json.optString("Actors")),
+            runtime = clean(json.optString("Runtime")),
+            isFavorite = MovieStore.isFavorite(id)
+        )
+    }
+
+    private fun parseMovieList(json: JSONObject): List<MovieUIModel> {
         if (json.optString("Response") == "False") {
             return emptyList()
         }
@@ -40,29 +76,6 @@ object BackendApi {
         }
 
         return results
-    }
-
-    fun getMovieDetails(imdbId: String): MovieUIModel {
-        val json = getJson("${Constants.BASE_URL}movies/$imdbId")
-
-        if (json.optString("Response") == "False") {
-            throw IOException(json.optString("Error", "Movie not found"))
-        }
-
-        val id = clean(json.optString("imdbID"))
-
-        return MovieUIModel(
-            id = id,
-            title = clean(json.optString("Title")),
-            year = clean(json.optString("Year")),
-            posterUrl = cleanPoster(json.optString("Poster")),
-            genre = clean(json.optString("Genre")),
-            plot = clean(json.optString("Plot")),
-            rating = clean(json.optString("imdbRating")),
-            actors = clean(json.optString("Actors")),
-            runtime = clean(json.optString("Runtime")),
-            isFavorite = MovieStore.isFavorite(id)
-        )
     }
 
     private fun getJson(urlString: String): JSONObject {
