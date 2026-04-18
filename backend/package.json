@@ -1,0 +1,20 @@
+{
+  "name": "cinevault-backend",
+  "version": "1.0.0",
+  "description": "Backend API for CineVault",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "dev": "nodemon --env-file=.env src/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

@@ -13,3 +13,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Backend
+/backend/node_modules/
+/backend/.env
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
