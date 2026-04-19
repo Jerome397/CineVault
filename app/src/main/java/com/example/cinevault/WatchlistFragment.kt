@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -12,6 +13,7 @@ class WatchlistFragment : Fragment(R.layout.fragment_watchlist) {
     private lateinit var recyclerWatchlist: RecyclerView
     private lateinit var emptyState: View
     private lateinit var titleText: TextView
+    private lateinit var viewModel: WatchlistViewModel
 
     private val watchlistAdapter = MovieRowAdapter(::showMovieDetails)
 
@@ -29,26 +31,40 @@ class WatchlistFragment : Fragment(R.layout.fragment_watchlist) {
             recyclerWatchlist.addItemDecoration(SpacingItemDecoration(16))
         }
 
-        refreshWatchlist()
-    }
+        val db = AppDatabase.getDatabase(requireContext())
+        val repository = MovieRepository(
+            RetrofitInstance.api,
+            db.favoriteMovieDao(),
+            db.watchlistMovieDao()
+        )
 
-    override fun onResume() {
-        super.onResume()
-        refreshWatchlist()
-    }
+        val factory = AppViewModelFactory(repository)
+        viewModel = ViewModelProvider(this, factory)[WatchlistViewModel::class.java]
 
-    private fun refreshWatchlist() {
-        val watchlist = MovieStore.getWatchlist()
+        viewModel.watchlist.observe(viewLifecycleOwner) { watchlist ->
+            titleText.text = getString(R.string.my_watchlist_count, watchlist.size)
 
-        titleText.text = getString(R.string.my_watchlist_count, watchlist.size)
+            if (watchlist.isEmpty()) {
+                recyclerWatchlist.visibility = View.GONE
+                emptyState.visibility = View.VISIBLE
+            } else {
+                emptyState.visibility = View.GONE
+                recyclerWatchlist.visibility = View.VISIBLE
 
-        if (watchlist.isEmpty()) {
-            recyclerWatchlist.visibility = View.GONE
-            emptyState.visibility = View.VISIBLE
-        } else {
-            emptyState.visibility = View.GONE
-            recyclerWatchlist.visibility = View.VISIBLE
-            watchlistAdapter.submitList(watchlist)
+                val uiList = watchlist.map {
+                    MovieUIModel(
+                        id = it.imdbID,
+                        title = it.title,
+                        year = it.year,
+                        posterUrl = it.poster,
+                        genre = it.genre,
+                        plot = it.plot,
+                        rating = it.rating
+                    )
+                }
+
+                watchlistAdapter.submitList(uiList)
+            }
         }
     }
 

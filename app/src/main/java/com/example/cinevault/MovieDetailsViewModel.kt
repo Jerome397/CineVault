@@ -20,10 +20,14 @@ class MovieDetailsViewModel(private val repository: MovieRepository) : ViewModel
     fun loadMovieDetails(imdbId: String) {
         viewModelScope.launch {
             try {
+                android.util.Log.d("MovieDetailsVM", "Loading details for: $imdbId")
                 val details = repository.getMovieDetails(imdbId)
+                android.util.Log.d("MovieDetailsVM", "Loaded details: ${details.Title}")
+
                 _movieDetails.value = details
                 _isFavorite.value = repository.isFavorite(imdbId)
             } catch (e: Exception) {
+                android.util.Log.e("MovieDetailsVM", "Failed to load details", e)
                 _error.value = e.message ?: "Failed to load movie details"
             }
         }

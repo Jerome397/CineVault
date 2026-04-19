@@ -2,14 +2,15 @@ package com.example.cinevault
 
 class MovieRepository(
     private val api: MovieApiService,
-    private val dao: FavoriteMovieDao
+    private val favoriteDao: FavoriteMovieDao,
+    private val watchlistDao: WatchlistMovieDao
 ) {
     suspend fun searchMovies(query: String): SearchResponse = api.searchMovies(query)
 
     suspend fun getMovieDetails(imdbId: String): MovieDetails = api.getMovieDetails(imdbId)
 
     suspend fun addFavorite(details: MovieDetails) {
-        dao.insert(
+        favoriteDao.insert(
             FavoriteMovieEntity(
                 imdbID = details.imdbID,
                 title = details.Title,
@@ -23,7 +24,7 @@ class MovieRepository(
     }
 
     suspend fun removeFavorite(details: MovieDetails) {
-        dao.delete(
+        favoriteDao.delete(
             FavoriteMovieEntity(
                 imdbID = details.imdbID,
                 title = details.Title,
@@ -36,7 +37,39 @@ class MovieRepository(
         )
     }
 
-    fun getAllFavorites() = dao.getAllFavorites()
+    fun getAllFavorites() = favoriteDao.getAllFavorites()
 
-    suspend fun isFavorite(id: String): Boolean = dao.isFavorite(id)
+    suspend fun isFavorite(id: String): Boolean = favoriteDao.isFavorite(id)
+
+    suspend fun addToWatchlist(details: MovieDetails) {
+        watchlistDao.insert(
+            WatchlistMovieEntity(
+                imdbID = details.imdbID,
+                title = details.Title,
+                year = details.Year,
+                poster = details.Poster,
+                genre = details.Genre,
+                rating = details.imdbRating,
+                plot = details.Plot
+            )
+        )
+    }
+
+    suspend fun removeFromWatchlist(details: MovieDetails) {
+        watchlistDao.delete(
+            WatchlistMovieEntity(
+                imdbID = details.imdbID,
+                title = details.Title,
+                year = details.Year,
+                poster = details.Poster,
+                genre = details.Genre,
+                rating = details.imdbRating,
+                plot = details.Plot
+            )
+        )
+    }
+
+    fun getAllWatchlist() = watchlistDao.getAllWatchlist()
+
+    suspend fun isInWatchlist(id: String): Boolean = watchlistDao.isInWatchlist(id)
 }

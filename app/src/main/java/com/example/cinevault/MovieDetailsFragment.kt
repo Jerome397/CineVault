@@ -37,7 +37,11 @@ class MovieDetailsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val db = AppDatabase.getDatabase(requireContext())
-        val repository = MovieRepository(RetrofitInstance.api, db.favoriteMovieDao())
+        val repository = MovieRepository(
+            RetrofitInstance.api,
+            db.favoriteMovieDao(),
+            db.watchlistMovieDao()
+        )
         val factory = AppViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[MovieDetailsViewModel::class.java]
 
