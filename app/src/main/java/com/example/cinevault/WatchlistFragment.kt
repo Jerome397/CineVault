@@ -35,7 +35,8 @@ class WatchlistFragment : Fragment(R.layout.fragment_watchlist) {
         val repository = MovieRepository(
             RetrofitInstance.api,
             db.favoriteMovieDao(),
-            db.watchlistMovieDao()
+            db.watchlistMovieDao(),
+            db.cachedMovieDao()
         )
 
         val factory = AppViewModelFactory(repository)

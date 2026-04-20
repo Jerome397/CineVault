@@ -18,6 +18,9 @@ class AppViewModelFactory(private val repository: MovieRepository) : ViewModelPr
             modelClass.isAssignableFrom(WatchlistViewModel::class.java) ->
                 WatchlistViewModel(repository) as T
 
+            modelClass.isAssignableFrom(HomeViewModel::class.java) ->
+                HomeViewModel(repository) as T
+
             else -> throw IllegalArgumentException("Unknown ViewModel class")
         }
     }

@@ -59,7 +59,8 @@ class MovieDetailsBottomSheetFragment :
         repository = MovieRepository(
             RetrofitInstance.api,
             db.favoriteMovieDao(),
-            db.watchlistMovieDao()
+            db.watchlistMovieDao(),
+            db.cachedMovieDao()
         )
         val factory = AppViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[MovieDetailsViewModel::class.java]

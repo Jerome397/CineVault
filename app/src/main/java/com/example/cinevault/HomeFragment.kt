@@ -10,6 +10,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.google.android.material.button.MaterialButton
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
@@ -23,6 +28,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private lateinit var recyclerTopRated: RecyclerView
     private lateinit var contentContainer: View
     private lateinit var skeletonContainer: LinearLayout
+    private lateinit var viewModel: HomeViewModel
+    private lateinit var repository: MovieRepository
 
     private val popularAdapter = MoviePosterAdapter(::showMovieDetails)
     private val topRatedAdapter = MoviePosterAdapter(::showMovieDetails)
@@ -45,8 +52,54 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         contentContainer = view.findViewById(R.id.contentContainer)
         skeletonContainer = view.findViewById(R.id.skeletonContainer)
 
+        val db = AppDatabase.getDatabase(requireContext())
+        repository = MovieRepository(
+            RetrofitInstance.api,
+            db.favoriteMovieDao(),
+            db.watchlistMovieDao(),
+            db.cachedMovieDao()
+        )
+
+        val factory = AppViewModelFactory(repository)
+        viewModel = ViewModelProvider(this, factory)[HomeViewModel::class.java]
+
         setupRecycler(recyclerPopular, popularAdapter)
         setupRecycler(recyclerTopRated, topRatedAdapter)
+
+        viewModel.cachedPopularMovies.observe(viewLifecycleOwner) { cachedPopular ->
+            val popular = cachedPopular.map {
+                MovieUIModel(
+                    id = it.imdbID,
+                    title = it.title,
+                    year = it.year,
+                    posterUrl = it.poster,
+                    genre = it.genre,
+                    plot = it.plot,
+                    rating = it.rating
+                )
+            }
+
+            popularMovies = popular
+            featuredMovie = popular.firstOrNull()
+            bindHomeData(popularMovies, topRatedMovies)
+        }
+
+        viewModel.cachedTopRatedMovies.observe(viewLifecycleOwner) { cachedTopRated ->
+            val topRated = cachedTopRated.map {
+                MovieUIModel(
+                    id = it.imdbID,
+                    title = it.title,
+                    year = it.year,
+                    posterUrl = it.poster,
+                    genre = it.genre,
+                    plot = it.plot,
+                    rating = it.rating
+                )
+            }
+
+            topRatedMovies = topRated
+            bindHomeData(popularMovies, topRatedMovies)
+        }
 
         buttonDetails.setOnClickListener {
             featuredMovie?.let(::showMovieDetails)
@@ -58,7 +111,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                 updateFavoriteButton()
             }
         }
-
         loadHomeData()
     }
 
@@ -81,25 +133,31 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         skeletonContainer.visibility = View.VISIBLE
         contentContainer.visibility = View.INVISIBLE
 
-        Thread {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val popular = BackendApi.getPopularMovies()
-                val topRated = BackendApi.getTopRatedMovies()
-
-                MovieStore.upsertMovies(popular)
-                MovieStore.upsertMovies(topRated)
-
-                activity?.runOnUiThread {
-                    if (!isAdded) return@runOnUiThread
-                    bindHomeData(popular, topRated)
+                val popular = withContext(Dispatchers.IO) {
+                    BackendApi.getPopularMovies()
                 }
-            } catch (_: Exception) {
-                activity?.runOnUiThread {
-                    if (!isAdded) return@runOnUiThread
-                    bindHomeData(emptyList(), emptyList())
+
+                val topRated = withContext(Dispatchers.IO) {
+                    BackendApi.getTopRatedMovies()
                 }
+
+                withContext(Dispatchers.IO) {
+                    repository.cachePopularMovies(popular)
+                    repository.cacheTopRatedMovies(topRated)
+                }
+
+                popularMovies = popular
+                topRatedMovies = topRated
+                featuredMovie = popular.firstOrNull()
+
+                bindHomeData(popular, topRated)
+            } catch (e: Exception) {
+                skeletonContainer.visibility = View.GONE
+                contentContainer.visibility = View.VISIBLE
             }
-        }.start()
+        }
     }
 
     private fun bindHomeData(popular: List<MovieUIModel>, topRated: List<MovieUIModel>) {
