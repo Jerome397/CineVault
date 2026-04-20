@@ -106,11 +106,9 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
 
         buttonFavorite.setOnClickListener {
-            featuredMovie?.let { movie ->
-                MovieStore.toggleFavorite(movie.id)
-                updateFavoriteButton()
-            }
+            toggleFeaturedFavorite()
         }
+
         loadHomeData()
     }
 
@@ -213,10 +211,17 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
 
         buttonFavorite.isEnabled = true
-        buttonFavorite.text = if (MovieStore.isFavorite(movie.id)) {
-            getString(R.string.added_to_favorites)
-        } else {
-            getString(R.string.add_to_favorites)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val isFavorite = withContext(Dispatchers.IO) {
+                repository.isFavorite(movie.id)
+            }
+
+            buttonFavorite.text = if (isFavorite) {
+                getString(R.string.added_to_favorites)
+            } else {
+                getString(R.string.add_to_favorites)
+            }
         }
     }
 
@@ -224,5 +229,32 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         MovieStore.upsertMovie(movie)
         MovieDetailsBottomSheetFragment.newInstance(movie)
             .show(parentFragmentManager, MovieDetailsBottomSheetFragment.TAG)
+    }
+
+    private fun toggleFeaturedFavorite() {
+        val movie = featuredMovie ?: return
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val details = withContext(Dispatchers.IO) {
+                    repository.getMovieDetails(movie.id)
+                }
+
+                val isFavorite = withContext(Dispatchers.IO) {
+                    repository.isFavorite(movie.id)
+                }
+
+                withContext(Dispatchers.IO) {
+                    if (isFavorite) {
+                        repository.removeFavorite(details)
+                    } else {
+                        repository.addFavorite(details)
+                    }
+                }
+
+                updateFavoriteButton()
+            } catch (_: Exception) {
+            }
+        }
     }
 }
